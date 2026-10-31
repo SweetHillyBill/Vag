@@ -27,7 +27,7 @@ Läget efter molnsessionen 31 okt 2026 (version 2.49). Läs också `CLAUDE.md`.
 ## Öppna punkter
 - Lägg in fastigheter som saknas (Styrelsen → Register) så att medlemmar kan välja dem.
 - Fastigheter utan namn/beteckning: se Register-översikten.
-- Supabase gratisplan: pausas efter ~1 veckas inaktivitet och saknar automatiska backuper → ladda ner säkerhetskopia (Admin) regelbundet eller uppgradera till Pro.
+- Supabase gratisplan: pausas efter ~1 veckas inaktivitet. GitHub Actions-jobbet `.github/workflows/hall-supabase-vaken.yml` i det publicerade repot frågar databasen varje dag så att det inte händer. Gratisplanen saknar automatiska backuper → ladda ner säkerhetskopia (Admin) regelbundet.
 - Ej byggt: tvåstegsverifiering för admin, bilagor i inkommande mejl visas inte i Inkorgen, flera fastigheter per person via självregistrering.
 - Länkarna under Dokument → Länkar går till startsidor; byt till exakta sidor vid behov.
 - Idé för framtiden: en neutral version för flera föreningar kräver förenings-id i alla tabeller och RLS (se genomgången i chatten).
