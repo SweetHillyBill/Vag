@@ -1,0 +1,14 @@
+const {chromium}=require('playwright');
+(async()=>{const b=await chromium.launch();const pg=await b.newPage({viewport:{width:1280,height:900}});
+await pg.addInitScript(()=>{localStorage.setItem('vag_losen_fraga','nej');localStorage.setItem('vag_push_fraga','nej')});
+await pg.route('**/supabase.js',rt=>rt.fulfill({path:'/tmp/vagtest/fake-supabase.js',contentType:'text/javascript'}));
+await pg.route('**/fonts.googleapis.com/**',rt=>rt.abort()); pg.on('pageerror',e=>console.log('ERR',e.message));
+await pg.goto('http://localhost:8766/index.html?m=medlem&img=1');await pg.waitForTimeout(1500);
+console.log('sign-anrop:',JSON.stringify(await pg.evaluate(()=>__calls.filter(c=>c[0]==='sign-many'))));
+console.log('hero:',await pg.$eval('#welcome',e=>e.className+' '+e.style.getPropertyValue('--hero-img').slice(0,60)));
+console.log('öppna-knapp:',await pg.$eval('#news [data-sattr=pdf]',e=>e.dataset.pdfopen.slice(0,50)));
+console.log('ladda ner:',await pg.$eval('#news [data-sattr=dl]',e=>e.href.slice(0,90)));
+await pg.click('.navtab[data-page=moten]'); console.log('bild:',await pg.$eval('#meetList img',e=>e.src.slice(0,60)));
+await pg.reload(); await pg.waitForTimeout(1500);
+console.log('efter omladdning, nya sign-anrop:',await pg.evaluate(()=>__calls.filter(c=>c[0]==='sign-many').length));
+await b.close();})();

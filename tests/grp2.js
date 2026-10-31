@@ -1,0 +1,11 @@
+const {chromium}=require('playwright');
+(async()=>{const b=await chromium.launch();const pg=await b.newPage({viewport:{width:1280,height:900}});
+await pg.addInitScript(()=>{localStorage.setItem('vag_losen_fraga','nej');localStorage.setItem('vag_push_fraga','nej')});
+await pg.route('**/supabase.js',rt=>rt.fulfill({path:'/tmp/vagtest/fake-supabase.js',contentType:'text/javascript'}));
+await pg.route('**/fonts.googleapis.com/**',rt=>rt.abort()); pg.on('pageerror',e=>console.log('ERR',e.message));
+await pg.goto('http://localhost:8766/index.html?m=admin');await pg.waitForTimeout(1000);
+await pg.click('.navtab[data-page=styrelse]'); await pg.click('[data-st=atg]'); await pg.click('#addAtg');
+await pg.fill('#aU','X'); await pg.selectOption('#aA','__g:funktionarer'); await pg.click('#aOk'); await pg.waitForTimeout(300);
+await pg.click('#st-atg button:visible:has-text("Ändra")'); await pg.waitForTimeout(200);
+console.log('reopen value:',await pg.$eval('#aA',e=>e.value));
+await b.close();})();

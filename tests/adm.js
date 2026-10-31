@@ -1,0 +1,16 @@
+const {chromium,devices}=require('playwright');
+(async()=>{const b=await chromium.launch();const ctx=await b.newContext(devices['Pixel 7']);const pg=await ctx.newPage();
+await pg.addInitScript(()=>{localStorage.setItem('vag_losen_fraga','nej');localStorage.setItem('vag_push_fraga','nej')});
+await pg.route('**/supabase.js',rt=>rt.fulfill({path:'/tmp/vagtest/fake-supabase.js',contentType:'text/javascript'}));
+await pg.route('**/fonts.googleapis.com/**',rt=>rt.abort()); pg.on('pageerror',e=>console.log('ERR',e.message));
+await pg.goto('http://localhost:8766/index.html?m=admin#styrelse');await pg.waitForTimeout(1300);
+await pg.click('#boardList .bcard:has-text("Leif")'); await pg.waitForTimeout(400);
+console.log('rad:',await pg.$eval('.adminrad',e=>e.innerText.replace(/\s+/g,' ')));
+await pg.click('#bpAdm'); console.log('armed:',await pg.$eval('#bpAdm',e=>e.textContent)); await pg.click('#bpAdm'); await pg.waitForTimeout(300);
+console.log('upsert:',JSON.stringify(await pg.evaluate(()=>__calls.filter(c=>c[0]==='upsert'))), await pg.$eval('.adminrad',e=>e.innerText.replace(/\s+/g,' ')));
+await pg.screenshot({path:'/tmp/vagtest/adm.png'});
+await pg.keyboard.press('Escape'); await pg.click('#boardList .bcard:has-text("Anna")'); await pg.waitForTimeout(300); console.log('utan mejl:',await pg.$eval('.adminrad',e=>e.innerText.replace(/\s+/g,' ')));
+const c2=await b.newContext(devices['Pixel 7']); const p2=await c2.newPage(); await p2.route('**/supabase.js',rt=>rt.fulfill({path:'/tmp/vagtest/fake-supabase.js',contentType:'text/javascript'}));
+await p2.addInitScript(()=>{localStorage.setItem('vag_losen_fraga','nej');localStorage.setItem('vag_push_fraga','nej')});
+await p2.goto('http://localhost:8766/index.html?m=styr#styrelse');await p2.waitForTimeout(1300); await p2.click('#boardList .bcard:has-text("Leif")'); await p2.waitForTimeout(300); console.log('styrelse ser adminrad:',await p2.$$eval('.adminrad',x=>x.length));
+await b.close();})();
