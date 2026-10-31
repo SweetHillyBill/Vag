@@ -47,7 +47,8 @@ Deno.serve(async (req) => {
     };
 
     if (body.action === "test") {
-      const { data: u } = await sb.auth.getUser();
+      const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+      const { data: u } = await sb.auth.getUser(token);
       const { data: subs } = await admin.from("push_prenumerationer").select("id,endpoint,p256dh,auth").eq("user_id", u?.user?.id ?? "");
       if (!subs?.length) return json({ fel: "Den här enheten har inte slagit på notiser." }, 400);
       return json(await sendTo(subs, { title: "Notiser är påslagna", body: "Du får en notis när det kommer nyheter från vägföreningen.", url: "./#start", tag: "test" }));
