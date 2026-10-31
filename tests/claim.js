@@ -1,0 +1,14 @@
+const {chromium,devices}=require('playwright');
+(async()=>{const b=await chromium.launch();const ctx=await b.newContext(devices['Pixel 7']);const pg=await ctx.newPage();
+await pg.addInitScript(()=>{localStorage.setItem('vag_losen_fraga','nej');localStorage.setItem('vag_push_fraga','nej')});
+await pg.route('**/supabase.js',rt=>rt.fulfill({path:'/tmp/vagtest/fake-supabase.js',contentType:'text/javascript'}));
+await pg.route('**/fonts.googleapis.com/**',rt=>rt.abort()); pg.on('pageerror',e=>console.log('ERR',e.message));
+await pg.goto('http://localhost:8766/index.html?m=medlem#medlemmar');await pg.waitForTimeout(1500);
+await pg.click('#memMine'); await pg.waitForTimeout(300);
+await pg.selectOption('#kuF','Stavberga'); await pg.waitForTimeout(200);
+console.log('vem-val:',await pg.$$eval('#kuVem option',x=>x.map(o=>o.textContent)),'namn:',await pg.$eval('#kuN',e=>e.value+' readonly='+e.readOnly),'tel:',await pg.$eval('#kuT',e=>e.value));
+await pg.screenshot({path:'/tmp/vagtest/claim.png'});
+await pg.click('#kuOk'); await pg.waitForTimeout(300); console.log('rpc:',JSON.stringify(await pg.evaluate(()=>window.__kont)));
+await pg.click('#memMine'); await pg.waitForTimeout(200); await pg.selectOption('#kuF','Hytternäs 1:5'); await pg.waitForTimeout(100);
+console.log('utan namnlösa: vem synlig',await pg.isVisible('#kuVemL'),'namn readonly',await pg.$eval('#kuN',e=>e.readOnly));
+await b.close();})();
