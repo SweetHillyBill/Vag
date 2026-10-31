@@ -6,6 +6,7 @@
 // Reserv: SMTP_HOST, SMTP_PORT (465), SMTP_USER, SMTP_PASS om Resend inte används.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import nodemailer from "npm:nodemailer@6.9.16";
+import { encodeBase64 } from "jsr:@std/encoding@1/base64";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -17,6 +18,30 @@ const json = (b: unknown, status = 200) =>
 const lc = (x: unknown) => String(x ?? "").trim().toLowerCase();
 const okMail = (x: string) => /^[^\s@<>",]+@[^\s@<>",]+\.[^\s@<>",]+$/.test(x);
 const MAX = 300;
+const MAX_BILAGOR = 15 * 1024 * 1024;
+
+// Hämtar bilagor som styrelsen laddat upp till den låsta lagringsplatsen (styrelse/bilagor/...).
+// Varje bilaga skickas som { path: "bilagor/<uuid>/<säkert-namn>", namn: "Riktigt namn.pdf" }.
+async function hamtaBilagor(items: unknown): Promise<{ filename: string; bytes: Uint8Array }[]> {
+  const list = (Array.isArray(items) ? items : [])
+    .map((x: any) => ({ path: String(x?.path ?? x ?? ""), namn: String(x?.namn ?? "") }))
+    .filter((x) => /^bilagor\/[\w-]+\/[\w.-]+$/.test(x.path)).slice(0, 10);
+  if (!list.length) return [];
+  const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  const ut: { filename: string; bytes: Uint8Array }[] = [];
+  let total = 0;
+  for (const { path: p, namn } of list) {
+    const { data, error } = await admin.storage.from("styrelse").download(p);
+    if (error || !data) throw new Error("Kunde inte hämta bilagan " + (namn || p.split("/").pop()));
+    const bytes = new Uint8Array(await data.arrayBuffer());
+    total += bytes.length;
+    if (total > MAX_BILAGOR) throw new Error("Bilagorna är för stora (högst 15 MB totalt).");
+    const filename = (namn || p.split("/").pop()!).replace(/[\\/\u0000-\u001f"]/g, "_").slice(0, 150);
+    ut.push({ filename, bytes });
+  }
+  return ut;
+}
+const resendAtt = (b: { filename: string; bytes: Uint8Array }[]) => b.map((x) => ({ filename: x.filename, content: encodeBase64(x.bytes) }));
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -74,20 +99,22 @@ Deno.serve(async (req) => {
       const subj = /^(re|sv):/i.test(m.amne) ? m.amne : `Sv: ${m.amne || namn}`;
       const citat = `\n\n--\n${namn}\n\nDen ${new Date(m.mottagen).toLocaleString("sv-SE", { timeZone: "Europe/Stockholm" })} skrev ${m.fran}:\n` +
         String(m.text || "").split("\n").slice(0, 200).map((r: string) => "> " + r).join("\n");
-      const mail = { from: `"${namn}" <${franAdr}>`, to: [m.fran], subject: subj, text: text + citat, ...(replyTo ? { reply_to: replyTo } : {}) };
+      let bil: { filename: string; bytes: Uint8Array }[] = [];
+      try { bil = await hamtaBilagor(body.bilagor); } catch (e) { return json({ fel: (e as Error).message }, 400); }
+      const mail = { from: `"${namn}" <${franAdr}>`, to: [m.fran], subject: subj, text: text + citat, ...(replyTo ? { reply_to: replyTo } : {}), ...(bil.length ? { attachments: resendAtt(bil) } : {}) };
       let ok = false;
       if (satt === "resend") {
         const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" }, body: JSON.stringify(mail) });
         ok = r.ok;
       } else {
         const t = nodemailer.createTransport({ host: smtp.host, port: smtp.port, secure: smtp.port === 465, auth: { user: smtp.user, pass: smtp.pass } });
-        try { await t.sendMail({ from: mail.from, to: m.fran, subject: subj, text: mail.text, replyTo: replyTo || undefined }); ok = true; } catch (_e) { ok = false; }
+        try { await t.sendMail({ from: mail.from, to: m.fran, subject: subj, text: mail.text, replyTo: replyTo || undefined, attachments: bil.map((x) => ({ filename: x.filename, content: x.bytes })) }); ok = true; } catch (_e) { ok = false; }
       }
       if (!ok) return json({ fel: "Det gick inte att skicka svaret." }, 502);
       const { data: u } = await sb.auth.getUser();
       const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
       const { data: cur } = await admin.from("inkorg").select("svar").eq("id", m.id).maybeSingle();
-      await admin.from("inkorg").update({ last: true, svar: [...(cur?.svar ?? []), { datum: new Date().toISOString(), av: u?.user?.email ?? "", text }] }).eq("id", m.id);
+      await admin.from("inkorg").update({ last: true, svar: [...(cur?.svar ?? []), { datum: new Date().toISOString(), av: u?.user?.email ?? "", text, bilagor: bil.map((x) => x.filename) }] }).eq("id", m.id);
       return json({ skickade: 1, till: m.fran });
     }
 
@@ -101,13 +128,27 @@ Deno.serve(async (req) => {
     if (!till.length) return json({ fel: "Inga giltiga mottagare." }, 400);
     if (till.length > MAX) return json({ fel: `Högst ${MAX} mottagare per utskick.` }, 400);
 
+    let bil: { filename: string; bytes: Uint8Array }[] = [];
+    try { bil = await hamtaBilagor(body.bilagor); } catch (e) { return json({ fel: (e as Error).message }, 400); }
     const fran = `"${namn}" <${franAdr}>`;
     const fot = `\n\n--\n${namn}` + (replyTo ? `\nSvara på det här mejlet så når du styrelsen.` : "") + (body.lank ? `\nMedlemssidorna: ${body.lank}` : "");
     const subject = amne || namn;
     const misslyckade: string[] = [];
     let skickade = 0;
 
-    if (satt === "resend") {
+    if (satt === "resend" && bil.length) {
+      // Massutskick med bilagor: dold kopia, högst 49 mottagare per mejl (Resend tillåter inte bilagor i batch).
+      const att = resendAtt(bil);
+      for (let i = 0; i < till.length; i += 49) {
+        const del = till.slice(i, i + 49);
+        const r = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ from: fran, to: [franAdr], bcc: del, subject, text: text + fot, attachments: att, ...(replyTo ? { reply_to: replyTo } : {}) }),
+        });
+        if (r.ok) skickade += del.length; else { misslyckade.push(...del); console.log("Resend fel:", r.status, (await r.text()).slice(0, 300)); }
+      }
+    } else if (satt === "resend") {
       for (let i = 0; i < till.length; i += 100) {
         const del = till.slice(i, i + 100);
         const r = await fetch("https://api.resend.com/emails/batch", {
@@ -120,12 +161,12 @@ Deno.serve(async (req) => {
     } else {
       const t = nodemailer.createTransport({ host: smtp.host, port: smtp.port, secure: smtp.port === 465, auth: { user: smtp.user, pass: smtp.pass }, pool: true, maxConnections: 2 });
       for (const to of till) {
-        try { await t.sendMail({ from: fran, replyTo: replyTo || undefined, to, subject, text: text + fot }); skickade++; }
+        try { await t.sendMail({ from: fran, replyTo: replyTo || undefined, to, subject, text: text + fot, attachments: bil.map((x) => ({ filename: x.filename, content: x.bytes })) }); skickade++; }
         catch (_e) { misslyckade.push(to); }
       }
       t.close();
     }
-    return json({ skickade, misslyckade, fran: franAdr, svar_till: replyTo || null });
+    return json({ skickade, misslyckade, fran: franAdr, svar_till: replyTo || null, bilagor: bil.map((x) => x.filename) });
   } catch (e) {
     return json({ fel: "Något gick fel: " + String((e as Error)?.message ?? e).slice(0, 200) }, 500);
   }
