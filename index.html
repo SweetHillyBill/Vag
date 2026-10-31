@@ -6,6 +6,7 @@
 <title>Baggetorp Hytternäs vägsamfällighet</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1f5c41">
+<meta name="color-scheme" content="light only">
 <link rel="icon" href="icon.png">
 <link rel="apple-touch-icon" href="icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -21,7 +22,7 @@
 <style>
 /* ============ Design tokens ============ */
 :root{
-  --bg:#f3f4f0; --surface:#ffffff; --surface-2:#f8f9f6; --ink:#17221c; --muted:#5f6b64; --faint:#8a948e;
+  --bg:#f3f4f0; --surface:#ffffff; --surface-2:#f8f9f6; --ink:#17221c; --muted:#4d5952; --faint:#7a847e;
   --line:#e2e6df; --line-strong:#cfd6cc;
   --accent:#1f5c41; --accent-ink:#ffffff; --accent-hover:#184a34; --accent-soft:#e6f0ea; --accent-soft-2:#d3e6da;
   --warn:#a35a00; --warn-soft:#fbefdc; --danger:#b3261e; --danger-soft:#fbe9e7; --ok:#2e7d4f; --ok-soft:#e3f3e8;
@@ -31,20 +32,8 @@
   --shadow-lg:0 10px 40px rgba(20,35,27,.14);
   --display:"Source Serif 4", Georgia, serif; --body:"Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
   --bar-h:64px; --tab-h:64px;
+  color-scheme:light;
 }
-@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
-  --bg:#101512; --surface:#18201b; --surface-2:#1d2620; --ink:#e7ede9; --muted:#a3b2a9; --faint:#7b8a81;
-  --line:#2a352f; --line-strong:#38463e;
-  --accent:#7fcca3; --accent-ink:#0d1f15; --accent-hover:#97d9b5; --accent-soft:#1f3328; --accent-soft-2:#284234;
-  --warn:#e8b25a; --warn-soft:#3a2d17; --danger:#f2a49c; --danger-soft:#3b1f1c; --ok:#8fd6a9; --ok-soft:#1d3427;
-  --shadow-sm:none; --shadow:0 1px 0 rgba(255,255,255,.03); --shadow-lg:0 10px 40px rgba(0,0,0,.5); color-scheme:dark; } }
-:root[data-theme="dark"]{
-  --bg:#101512; --surface:#18201b; --surface-2:#1d2620; --ink:#e7ede9; --muted:#a3b2a9; --faint:#7b8a81;
-  --line:#2a352f; --line-strong:#38463e;
-  --accent:#7fcca3; --accent-ink:#0d1f15; --accent-hover:#97d9b5; --accent-soft:#1f3328; --accent-soft-2:#284234;
-  --warn:#e8b25a; --warn-soft:#3a2d17; --danger:#f2a49c; --danger-soft:#3b1f1c; --ok:#8fd6a9; --ok-soft:#1d3427;
-  --shadow-sm:none; --shadow:0 1px 0 rgba(255,255,255,.03); --shadow-lg:0 10px 40px rgba(0,0,0,.5); color-scheme:dark; }
-
 /* ============ Base ============ */
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -261,6 +250,14 @@ details.item[open] summary{padding-bottom:8px;border-bottom:1px solid var(--line
 #accessMgr{display:flex;flex-direction:column;gap:12px}
 body:not(.is-admin) #accessMgr{display:none}
 #accessMgr:empty{display:none}
+.ver{font-size:.85rem;font-weight:700;color:var(--accent);background:var(--accent-soft);padding:4px 12px;border-radius:999px}
+.changelog{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.changelog>li{display:grid;grid-template-columns:110px 1fr;gap:12px;padding:14px 0;border-top:1px solid var(--line)}
+.changelog>li>div{display:flex;flex-direction:column;gap:2px}
+.changelog b{font-size:1.05rem}
+.changelog time{font-size:.82rem;color:var(--muted)}
+.changelog ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+@media (max-width:520px){ .changelog>li{grid-template-columns:1fr;gap:6px} .changelog>li>div{flex-direction:row;gap:10px;align-items:baseline} }
 .panel.row.admin{padding:16px 20px}
 .acc-add{display:grid;grid-template-columns:1fr 1fr 140px auto;gap:8px}
 .acc-add button{min-height:44px}
@@ -593,6 +590,26 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
       </div>
     </section>
     <section class="panel" id="accessMgr"></section>
+    <section class="panel" id="version">
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.2</span></div>
+      <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
+      <ol class="changelog">
+        <li><div><b>2.2</b><time>31 okt 2026</time></div><ul>
+          <li>Alltid ljust färgschema så att texten är lätt att läsa, även när datorn eller telefonen använder mörkt läge.</li>
+          <li>Starkare kontrast på grå hjälptexter.</li>
+          <li>Versionsnummer och den här ändringsloggen på adminsidan.</li></ul></li>
+        <li><div><b>2.1</b><time>31 okt 2026</time></div><ul>
+          <li>Anpassad layout för surfplatta och dator: två kolumner på startsidan, formulär och ärendelista sida vid sida, utskick och historik sida vid sida.</li>
+          <li>Kompakt meny när mobilen hålls på tvären, stöd för notch och hemskärmsapp.</li>
+          <li>Rättat: dolda fält, till exempel Din mejladress i utskick, syntes.</li></ul></li>
+        <li><div><b>2.0</b><time>31 okt 2026</time></div><ul>
+          <li>Ny design: topprad med logga, meny med ikoner (längst ner i mobilen), startsida med snabbval.</li>
+          <li>Möten med kalenderblock, medlemmar och styrelse med initialer och knappar för samtal och mejl.</li>
+          <li>Ny inloggningssida och enhetlig stil för kort, knappar och formulär.</li></ul></li>
+        <li><div><b>1.0</b><time>okt 2026</time></div><ul>
+          <li>Första versionen av medlemsappen: start, medlemsregister, styrelse, möten, felanmälan och synpunkter, utskick, andelstal och inloggning med mejllänk.</li></ul></li>
+      </ol>
+    </section>
   </div>
 
   <div class="page" id="page-verktyg" hidden>
