@@ -48,6 +48,30 @@ Deno.serve(async (req) => {
     const text = String(body.text ?? "").slice(0, 20000);
     if (!text.trim()) return json({ fel: "Meddelandet är tomt." }, 400);
 
+    // Svar på ett mejl i inkorgen: går bara till den som skrev mejlet.
+    if (body.action === "svara") {
+      const { data: m } = await sb.from("inkorg").select("id,fran,amne,text,mottagen").eq("id", String(body.inkorg_id ?? "")).maybeSingle();
+      if (!m || !okMail(lc(m.fran))) return json({ fel: "Mejlet finns inte." }, 404);
+      const subj = /^(re|sv):/i.test(m.amne) ? m.amne : `Sv: ${m.amne || namn}`;
+      const citat = `\n\n--\n${namn}\n\nDen ${new Date(m.mottagen).toLocaleString("sv-SE", { timeZone: "Europe/Stockholm" })} skrev ${m.fran}:\n` +
+        String(m.text || "").split("\n").slice(0, 200).map((r: string) => "> " + r).join("\n");
+      const mail = { from: `"${namn}" <${franAdr}>`, to: [m.fran], subject: subj, text: text + citat, ...(replyTo ? { reply_to: replyTo } : {}) };
+      let ok = false;
+      if (satt === "resend") {
+        const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" }, body: JSON.stringify(mail) });
+        ok = r.ok;
+      } else {
+        const t = nodemailer.createTransport({ host: smtp.host, port: smtp.port, secure: smtp.port === 465, auth: { user: smtp.user, pass: smtp.pass } });
+        try { await t.sendMail({ from: mail.from, to: m.fran, subject: subj, text: mail.text, replyTo: replyTo || undefined }); ok = true; } catch (_e) { ok = false; }
+      }
+      if (!ok) return json({ fel: "Det gick inte att skicka svaret." }, 502);
+      const { data: u } = await sb.auth.getUser();
+      const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const { data: cur } = await admin.from("inkorg").select("svar").eq("id", m.id).maybeSingle();
+      await admin.from("inkorg").update({ last: true, svar: [...(cur?.svar ?? []), { datum: new Date().toISOString(), av: u?.user?.email ?? "", text }] }).eq("id", m.id);
+      return json({ skickade: 1, till: m.fran });
+    }
+
     // Bara adresser som finns i medlemsregistret, styrelsen eller bland inloggningarna får ta emot.
     const tillatna = new Set<string>();
     for (const m of (site.medlemmar ?? [])) if (okMail(lc(m.epost))) tillatna.add(lc(m.epost));
