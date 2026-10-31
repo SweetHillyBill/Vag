@@ -1,6 +1,7 @@
 // Skickar utskick åt styrelse och admin.
 // Avsändare: tjänstens adress (MAIL_FRAN) i föreningens namn. Svar går till föreningens egen adress
 // (site/main -> installningar.epost), som admin skriver in i appen.
+// Mottagare kontrolleras mot medlemsregistret (tabellen medlemmar), styrelsen och inloggningarna.
 // Hemligheter (Supabase -> Edge Functions -> Secrets):
 //   RESEND_API_KEY, MAIL_FRAN (t.ex. baggetorp@vagappen.se), MAIL_FRAN_NAMN (föreningens namn)
 // Reserv: SMTP_HOST, SMTP_PORT (465), SMTP_USER, SMTP_PASS om Resend inte används.
@@ -111,7 +112,7 @@ Deno.serve(async (req) => {
         try { await t.sendMail({ from: mail.from, to: m.fran, subject: subj, text: mail.text, replyTo: replyTo || undefined, attachments: bil.map((x) => ({ filename: x.filename, content: x.bytes })) }); ok = true; } catch (_e) { ok = false; }
       }
       if (!ok) return json({ fel: "Det gick inte att skicka svaret." }, 502);
-      const { data: u } = await sb.auth.getUser();
+      const { data: u } = await sb.auth.getUser((req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, ""));
       const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
       const { data: cur } = await admin.from("inkorg").select("svar").eq("id", m.id).maybeSingle();
       await admin.from("inkorg").update({ last: true, svar: [...(cur?.svar ?? []), { datum: new Date().toISOString(), av: u?.user?.email ?? "", text, bilagor: bil.map((x) => x.filename) }] }).eq("id", m.id);
@@ -120,7 +121,8 @@ Deno.serve(async (req) => {
 
     // Bara adresser som finns i medlemsregistret, styrelsen eller bland inloggningarna får ta emot.
     const tillatna = new Set<string>();
-    for (const m of (site.medlemmar ?? [])) if (okMail(lc(m.epost))) tillatna.add(lc(m.epost));
+    const { data: medl } = await sb.from("medlemmar").select("epost");
+    for (const m of (medl ?? [])) if (okMail(lc(m.epost))) tillatna.add(lc(m.epost));
     for (const m of (site.styrelse ?? [])) if (okMail(lc(m.epost))) tillatna.add(lc(m.epost));
     const { data: roller } = await sb.from("roller").select("email");
     for (const r of (roller ?? [])) tillatna.add(lc(r.email));

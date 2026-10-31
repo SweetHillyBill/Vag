@@ -8,6 +8,6 @@ await pg.route('**/fonts.googleapis.com/**',rt=>rt.abort()); pg.on('pageerror',e
 await pg.goto('http://localhost:8766/index.html?m=medlem&img=1');await pg.waitForTimeout(1500);
 await pg.screenshot({path:`/tmp/vagtest/qk0-${tag}.png`});
 await pg.mouse.wheel(0,500); await pg.waitForTimeout(400); await pg.screenshot({path:`/tmp/vagtest/qk-${tag}.png`});
-await pg.click('.quickwrap [data-ctype=fel]'); await pg.waitForTimeout(200); console.log(tag,'gick till:',location=await pg.evaluate(()=>location.hash));
+await pg.click('.subnav [data-ctype=fel]'); await pg.waitForTimeout(200); console.log(tag,'gick till:',location=await pg.evaluate(()=>location.hash));
 await ctx.close();}
 await b.close();})();

@@ -1,0 +1,10 @@
+const {chromium}=require('playwright');
+(async()=>{const b=await chromium.launch();const pg=await b.newPage({viewport:{width:1280,height:900}});
+await pg.addInitScript(()=>{localStorage.setItem('vag_losen_fraga','nej');localStorage.setItem('vag_push_fraga','nej')});
+await pg.route('**/supabase.js',rt=>rt.fulfill({path:'/tmp/vagtest/fake-supabase.js',contentType:'text/javascript'}));
+await pg.route('**/fonts.googleapis.com/**',rt=>rt.abort()); pg.on('pageerror',e=>console.log('ERR',e.message));
+await pg.goto('http://localhost:8766/index.html?m=admin');await pg.waitForTimeout(1500);
+await pg.click('#adminBtn'); await pg.waitForTimeout(600);
+console.log('logg:',await pg.$$eval('.loggrow',x=>x.map(e=>e.innerText.replace(/\s+/g,' '))));
+await pg.locator('#backupSet').scrollIntoViewIfNeeded(); await pg.screenshot({path:'/tmp/vagtest/backup.png'});
+await b.close();})();

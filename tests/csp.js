@@ -1,0 +1,16 @@
+const {chromium}=require('playwright');
+(async()=>{const b=await chromium.launch();const pg=await b.newPage({viewport:{width:1280,height:900},acceptDownloads:true});
+const errs=[]; pg.on('console',m=>{ if(m.type()==='error'||m.type()==='warning') errs.push(m.text()); });
+await pg.addInitScript(()=>{localStorage.setItem('vag_losen_fraga','nej');localStorage.setItem('vag_push_fraga','nej')});
+await pg.route('**/supabase.js',rt=>rt.fulfill({path:'/tmp/vagtest/fake-supabase.js',contentType:'text/javascript'}));
+await pg.route('**/fonts.googleapis.com/**',rt=>rt.abort()); pg.on('pageerror',e=>console.log('ERR',e.message));
+await pg.route(/icon\.png\?token=t&f=.*\.pdf/,rt=>rt.fulfill({path:'/tmp/vagtest/adresslista.pdf',contentType:'application/pdf'}));
+await pg.goto('http://localhost:8766/index.html?m=admin');await pg.waitForTimeout(1500);
+await pg.click('#news [data-sattr=pdf]'); await pg.waitForTimeout(3000);
+console.log('pdf-sidor ritade:',await pg.$$eval('.pdfpages canvas',x=>x.length), await pg.$eval('.pdfpages',e=>e.innerText.slice(0,80)));
+await pg.keyboard.press('Escape');
+await pg.click('.navtab[data-page=styrelse]'); await pg.click('[data-st=reg]');
+const [dl]=await Promise.all([pg.waitForEvent('download',{timeout:15000}),pg.click('#memPdf')]);
+console.log('adresslista:',dl.suggestedFilename());
+console.log('CSP/fel:',errs.filter(e=>/Refused|Content Security|CSP/i.test(e)).slice(0,6));
+await b.close();})();

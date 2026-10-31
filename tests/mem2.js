@@ -1,0 +1,16 @@
+const {chromium,devices}=require('playwright');
+(async()=>{const b=await chromium.launch();const pg=await b.newPage({viewport:{width:1280,height:900}});
+const errs=[]; pg.on('console',m=>{ if(m.type()==='error') errs.push(m.text()); });
+await pg.addInitScript(()=>{localStorage.setItem('vag_losen_fraga','nej');localStorage.setItem('vag_push_fraga','nej')});
+await pg.route('**/supabase.js',rt=>rt.fulfill({path:'/tmp/vagtest/fake-supabase.js',contentType:'text/javascript'}));
+await pg.route('**/fonts.googleapis.com/**',rt=>rt.abort()); pg.on('pageerror',e=>console.log('ERR',e.message));
+await pg.goto('http://localhost:8766/index.html?m=admin#medlemmar');await pg.waitForTimeout(1500);
+console.log('kort:',await pg.$$eval('.mcard strong',x=>x.map(e=>e.textContent)));
+await pg.click('.mcard:has-text("Stavberga")'); await pg.click('#memDlg [data-act=edit]'); await pg.fill('#memDlg .edit [data-f=telefon]','070-999'); await pg.dispatchEvent('#memDlg .edit [data-f=telefon]','input'); await pg.waitForTimeout(900);
+await pg.click('#memDlg [data-act=done]'); await pg.waitForTimeout(900);
+console.log('anrop:',JSON.stringify(await pg.evaluate(()=>__calls.filter(c=>['upsert','delete','set'].includes(c[0])||String(c[1]).includes('medlem')).map(c=>[c[0],c[1],Array.isArray(c[2])?c[2].map(r=>r.id+':'+r.telefon):typeof c[2]==='object'?Object.keys(c[2]||{}).join('+'):c[2]]))));
+await pg.goto('http://localhost:8766/index.html?m=admin#admin');await pg.waitForTimeout(3000);
+console.log('logg:',await pg.$$eval('.loggrow',x=>x.map(e=>e.innerText.replace(/\s+/g,' '))));
+console.log('CSP-fel:',errs.filter(e=>/Content Security|CSP|Refused/i.test(e)).slice(0,5));
+await pg.screenshot({path:'/tmp/vagtest/backup.png',fullPage:false});
+await b.close();})();
