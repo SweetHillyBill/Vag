@@ -2,12 +2,16 @@
 <html lang="sv">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Baggetorp Hytternäs vägsamfällighet</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1f5c41">
 <link rel="icon" href="icon.png">
 <link rel="apple-touch-icon" href="icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Vägföreningen">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <script src="supabase.js"></script>
 <script src="sb.js"></script>
 <script src="jspdf.umd.min.js"></script>
@@ -43,6 +47,7 @@
 
 /* ============ Base ============ */
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{margin:0}
 html{-webkit-text-size-adjust:100%}
 body{background:var(--bg);color:var(--ink);font:16px/1.5 var(--body);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
@@ -93,7 +98,7 @@ section[hidden]{display:none!important}
 .pagehead h1{font-size:1.75rem}
 .pagehead .hint{font-size:.95rem}
 .list{display:flex;flex-direction:column;gap:12px}
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;align-items:start}
 .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .scroll{overflow-x:auto}
@@ -163,7 +168,7 @@ button.danger:hover{background:var(--danger-soft);border-color:var(--danger-soft
 .tile.warn .tico{background:var(--warn-soft);color:var(--warn)}
 .tile span:last-child{display:flex;flex-direction:column;gap:2px}
 .tile small{font-weight:400;color:var(--muted);font-size:.85rem}
-.startgrid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:24px;align-items:start}
+.startgrid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:24px;align-items:start}
 .startgrid>.col{display:flex;flex-direction:column;gap:24px;min-width:0}
 
 /* ============ Cards / items ============ */
@@ -237,7 +242,7 @@ details.item[open] summary{padding-bottom:8px;border-bottom:1px solid var(--line
 .rc span{display:flex;flex-direction:column}
 .rc small{color:var(--muted);font-size:.8rem;word-break:break-all}
 .rc.none{opacity:.5}
-.ubtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ubtns{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .ubtns button{min-height:46px}
 .ubtns #uMail{grid-column:1/-1}
 
@@ -326,7 +331,31 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
 .gmsg:empty{display:none}
 
 /* ============ Responsive ============ */
-@media (max-width:860px){
+/* Desktop and large tablets: use the width */
+@media (min-width:1000px){
+  #page-arenden:not([hidden]){display:grid;grid-template-columns:minmax(340px,400px) minmax(0,1fr);gap:24px;align-items:start}
+  #page-arenden>.pagehead{grid-column:1/-1}
+  #page-arenden>#caseForm{position:sticky;top:calc(var(--bar-h) + 64px)}
+  #meetList{display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));align-items:start}
+  #st-utskick{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);grid-template-rows:auto 1fr;column-gap:24px;row-gap:12px;align-items:start}
+  #st-utskick>.panel{grid-row:1/span 2}
+  #st-utskick>.ph{grid-column:2;grid-row:1}
+  #st-utskick>#uLog{grid-column:2;grid-row:2}
+}
+/* Tablets */
+@media (min-width:761px) and (max-width:1099px){
+  main{padding:24px 24px 64px}
+  .appbar-in,.nav{padding-left:24px;padding-right:24px}
+  .nav{padding-left:16px}
+  .navtab{padding:14px 10px 13px}
+  .welcome{padding:28px 26px}
+  .welcome h1{font-size:1.85rem}
+}
+@media (max-width:860px) and (min-width:761px){
+  .navtab .long{display:none}
+  .navtab .short{display:inline}
+}
+@media (max-width:700px){
   .startgrid{grid-template-columns:1fr}
 }
 @media (max-width:760px){
@@ -364,7 +393,44 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
   .panel.scroll>table{min-width:0}
   .tabs{flex-wrap:nowrap;overflow-x:auto}
 }
-@media (max-width:420px){ .grid2{grid-template-columns:1fr} .ubtns{grid-template-columns:1fr} }
+/* Phones held sideways: keep the screen free for content */
+@media (max-width:960px) and (max-height:500px) and (orientation:landscape){
+  :root{--tab-h:50px}
+  .appbar{position:static}
+  .nav{position:fixed;left:0;right:0;bottom:0;z-index:25;max-width:none;margin:0;padding:0 max(8px,env(safe-area-inset-right)) env(safe-area-inset-bottom) max(8px,env(safe-area-inset-left));background:var(--surface);border-top:1px solid var(--line);overflow:visible}
+  .navtab{flex:1 1 0;flex-direction:row;justify-content:center;gap:6px;height:var(--tab-h);padding:0 4px;font-size:.8rem;border:none}
+  .navtab[aria-selected="true"] .ico{width:22px;padding:0;height:22px;background:none}
+  .navtab .long{display:none}
+  .navtab .short{display:inline}
+  main{padding-bottom:calc(var(--tab-h) + 32px)}
+  #status{bottom:calc(var(--tab-h) + 12px)}
+  .welcome{padding:18px 22px}
+  .welcome h1{font-size:1.35rem;max-width:none}
+  .welcome .lead{display:none}
+  .quick{grid-template-columns:repeat(3,1fr)}
+  .tile small{display:none}
+  .startgrid{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}
+}
+/* Touch screens: no sticky hover colours after a tap */
+@media (hover:none){
+  button:hover{background:var(--accent);border-color:var(--accent)}
+  button.ghost:hover{background:var(--surface);border-color:var(--line-strong)}
+  button.danger:hover{background:transparent;border-color:transparent}
+  button.logout:hover,.chipbtn:hover{background:var(--surface);color:var(--muted);border-color:var(--line-strong)}
+  button.logout:hover{border-color:var(--line)}
+  .chipbtn.on:hover{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  .navtab:hover,.tab:hover{background:transparent;color:var(--muted)}
+  .navtab[aria-selected="true"]:hover{color:var(--accent)}
+  .tab[aria-selected="true"]:hover{background:var(--surface);color:var(--accent)}
+  .tile:hover,.biglink:hover{border-color:var(--line)}
+  .tile:hover{background:var(--surface)}
+  .biglink:hover{background:var(--surface-2)}
+  .rc:hover,.acc-row:hover{background:transparent}
+  .cbtn:hover{border-color:var(--line);color:var(--ink)}
+  button:active,.tile:active,.biglink:active{filter:brightness(.96)}
+}
+@media (max-width:520px){ .ubtns{grid-template-columns:1fr} }
+@media (max-width:420px){ .grid2{grid-template-columns:1fr} }
 @media (prefers-reduced-motion: reduce){ *{transition:none!important} }
 @media print{ .appbar,.nav,#status{display:none!important} main{padding:0} .panel,.item{box-shadow:none} }
 </style>
