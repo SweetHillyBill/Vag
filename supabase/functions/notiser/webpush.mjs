@@ -65,6 +65,7 @@ export async function skicka(sub, text, nycklar, kontakt = "mailto:bhvf@vagappen
     },
     body,
   });
+  if (!r.ok) console.error("push svar", r.status, new URL(sub.endpoint).host, (await r.text().catch(() => "")).slice(0, 300));
   return r.status;
 }
 export { vapidHeader };

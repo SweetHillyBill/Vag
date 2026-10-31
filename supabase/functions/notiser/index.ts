@@ -37,21 +37,22 @@ Deno.serve(async (req) => {
 
     const sendTo = async (subs: any[], payload: unknown) => {
       const text = JSON.stringify(payload);
-      let skickade = 0; const bort: string[] = []; let fel = 0;
+      let skickade = 0; const bort: string[] = []; let fel = 0; const koder: number[] = [];
       for (let i = 0; i < subs.length; i += 20) {
-        const res = await Promise.all(subs.slice(i, i + 20).map((s) => skicka(s, text, n).catch(() => 0)));
-        res.forEach((st, j) => { if (st >= 200 && st < 300) skickade++; else if (st === 404 || st === 410) bort.push(subs[i + j].id); else fel++; });
+        const res = await Promise.all(subs.slice(i, i + 20).map((s) => skicka(s, text, n).catch((e) => { console.error("push undantag", String(e?.message ?? e)); return 0; })));
+        res.forEach((st, j) => { koder.push(st); if (st >= 200 && st < 300) skickade++; else if (st === 404 || st === 410) bort.push(subs[i + j].id); else fel++; });
       }
       if (bort.length) await admin.from("push_prenumerationer").delete().in("id", bort);
-      return { skickade, borttagna: bort.length, fel };
+      return { skickade, borttagna: bort.length, fel, koder };
     };
 
     if (body.action === "test") {
-      const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
-      const { data: u } = await sb.auth.getUser(token);
-      const { data: subs } = await admin.from("push_prenumerationer").select("id,endpoint,p256dh,auth").eq("user_id", u?.user?.id ?? "");
+      // Radsäkerheten gör att den inloggade bara ser sina egna enheter.
+      const { data: subs, error: sErr } = await sb.from("push_prenumerationer").select("id,endpoint,p256dh,auth");
+      if (sErr) return json({ fel: "Kunde inte läsa enheter: " + sErr.message }, 500);
       if (!subs?.length) return json({ fel: "Den här enheten har inte slagit på notiser." }, 400);
-      return json(await sendTo(subs, { title: "Notiser är påslagna", body: "Du får en notis när det kommer nyheter från vägföreningen.", url: "./#start", tag: "test" }));
+      const r = await sendTo(subs, { title: "Notiser är påslagna", body: "Du får en notis när det kommer nyheter från vägföreningen.", url: "./#start", tag: "test" });
+      return json(r);
     }
 
     if (body.action === "nyhet") {
