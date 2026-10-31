@@ -44,6 +44,25 @@ Deno.serve(async (req) => {
     if (body.action === "status") return json({ konfigurerad, fran: konfigurerad ? franAdr : null, namn, svar_till: replyTo || null });
     if (!konfigurerad) return json({ fel: "Mejltjänsten är inte kopplad ännu." }, 400);
 
+    // Hämta innehållet till ett mottaget mejl som sparades utan text.
+    if (body.action === "hamta") {
+      const { data: m } = await sb.from("inkorg").select("id,resend_id,text,html").eq("id", String(body.inkorg_id ?? "")).maybeSingle();
+      if (!m) return json({ fel: "Mejlet finns inte." }, 404);
+      if (m.text || m.html) return json({ text: m.text, html: m.html });
+      if (!m.resend_id || !resendKey) return json({ fel: "Innehållet går inte att hämta." }, 400);
+      const r = await fetch(`https://api.resend.com/emails/receiving/${encodeURIComponent(m.resend_id)}`, { headers: { Authorization: `Bearer ${resendKey}` } });
+      if (!r.ok) {
+        const t = (await r.text()).slice(0, 300);
+        console.log("Kunde inte hämta innehåll från Resend:", r.status, t);
+        return json({ fel: r.status === 401 || r.status === 403 ? "API-nyckeln saknar behörighet att läsa mottagna mejl (behöver Full access)." : `Resend svarade ${r.status}.`, detalj: t }, 502);
+      }
+      const d = await r.json();
+      const text = String(d.text ?? "").slice(0, 200000), html = String(d.html ?? "").slice(0, 500000);
+      const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      await admin.from("inkorg").update({ text, html }).eq("id", m.id);
+      return json({ text, html });
+    }
+
     const amne = String(body.amne ?? "").slice(0, 200).trim();
     const text = String(body.text ?? "").slice(0, 20000);
     if (!text.trim()) return json({ fel: "Meddelandet är tomt." }, 400);

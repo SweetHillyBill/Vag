@@ -41,6 +41,7 @@ Deno.serve(async (req) => {
     try {
       const r = await fetch(`https://api.resend.com/emails/receiving/${encodeURIComponent(rid)}`, { headers: { Authorization: `Bearer ${key}` } });
       if (r.ok) { const m = await r.json(); text = String(m.text ?? ""); html = String(m.html ?? ""); subject = subject || String(m.subject ?? ""); from = from || m.from; to = to || m.to; }
+      else console.log("Kunde inte hämta innehåll från Resend:", r.status, (await r.text()).slice(0, 300));
     } catch (_e) { /* sparas utan innehåll */ }
   }
   const f = parseAddr(from), t = parseAddr(to);
