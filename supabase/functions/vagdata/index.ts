@@ -1,4 +1,5 @@
-// Hämtar vägar (OpenStreetMap, highway=*) inom en ruta åt andelstalsverktyget.
+// Andelstalsverktygets vägdata. ?route=lon,lat;lon,lat… lägger en linje på vägen via OSRM (routing.openstreetmap.de, gång).
+// ?bbox=S,W,N,E hämtar vägar (OpenStreetMap, highway=*) inom en ruta via Overpass.
 // Webbläsaren behöver då bara nå Supabase. Ingen inloggning; rutan begränsas för att undvika missbruk.
 const ENDPOINTS = [
   "https://overpass-api.de/api/interpreter",
@@ -16,7 +17,25 @@ const svar = (body: unknown, status = 200, extra: Record<string, string> = {}) =
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
-  const bb = (new URL(req.url).searchParams.get("bbox") || "").split(",").map(Number);
+  const u = new URL(req.url);
+  const route = u.searchParams.get("route");
+  if (route) {
+    const pts = route.split(";").map((x) => x.split(",").map(Number));
+    if (pts.length < 2 || pts.length > 200 || pts.some((p) => p.length !== 2 || !p.every(isFinite) || Math.abs(p[0]) > 180 || Math.abs(p[1]) > 90))
+      return svar({ fel: "route=lon,lat;lon,lat krävs" }, 400);
+    const c = pts.map((p) => p[0].toFixed(6) + "," + p[1].toFixed(6)).join(";");
+    try {
+      const r = await fetch(`https://routing.openstreetmap.de/routed-foot/route/v1/driving/${c}?overview=full&geometries=geojson`, {
+        headers: { "User-Agent": "Vagforeningens-andelstalsverktyg/1.0" }, signal: AbortSignal.timeout(15000) });
+      const t = await r.text();
+      if (!r.ok) console.log("vagdata route", r.status, t.slice(0, 200));
+      return new Response(t, { status: r.status, headers: { ...CORS, "Content-Type": "application/json" } });
+    } catch (e) {
+      console.log("vagdata route misslyckades", String(e));
+      return svar({ fel: "Vägvisaren svarade inte" }, 502);
+    }
+  }
+  const bb = (u.searchParams.get("bbox") || "").split(",").map(Number);
   if (bb.length !== 4 || bb.some((x) => !isFinite(x))) return svar({ fel: "bbox=S,W,N,E krävs" }, 400);
   const [S, W, N, E] = bb;
   if (!(S < N && W < E) || N - S > 0.3 || E - W > 0.6 || S < -90 || N > 90) return svar({ fel: "Rutan är för stor eller fel" }, 400);
