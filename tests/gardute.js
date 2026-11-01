@@ -7,7 +7,7 @@ await pg.goto('http://localhost:8766/verktyg.html'); await pg.waitForTimeout(400
 await pg.evaluate(()=>{ applyRemote({props:[{id:"h",namn:"Storgården",typ:"jord",perm:1,anstallda:2,skiften:[{id:"s1",namn:"Åkern vid sjön",aker:12,bete:0,plats:"bc",fu:true,route:[]},{id:"s2",namn:"Betet",aker:0,bete:6,plats:"bc",fu:true,route:[]}]}],
   karta:{vagar:[{id:"v",pts:[[59.05,16.565],[59.05,16.54]]}],punkter:[{id:"u",typ:"utfart",ll:[59.05,16.565]}]}}); openTab='fast'; selected="h"; renderTabs(); renderCards(); renderSummary(); });
 await pg.waitForTimeout(300);
-await pg.check('#gardUtanfor-h'); await pg.waitForTimeout(400);
+await pg.click('#cards fieldset.fs legend:text("Gården")'); await pg.check('#gardUtanfor-h'); await pg.waitForTimeout(400);
 console.log(tag,'fält:',await pg.$$eval('#cards fieldset.fs legend',x=>x.map(e=>e.textContent).join(' / ')));
 console.log(tag,'skiftesval:',await pg.$eval('#skplats-s1',e=>[...e.options].map(o=>o.text+(o.selected?'*':'')).join(' | ')));
 await pg.evaluate(()=>{ openTab='ansl'; renderTabs(); }); await pg.waitForTimeout(500);
