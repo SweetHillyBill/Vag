@@ -3,7 +3,7 @@ const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42
 (async()=>{const b=await chromium.launch();
 for(const [opt,tag] of [[devices['Pixel 7'],'m'],[{viewport:{width:820,height:1180}},'t'],[{viewport:{width:1280,height:900}},'d']]){
 const ctx=await b.newContext({...opt,acceptDownloads:true});const pg=await ctx.newPage();
-await pg.route(/tile\.(openstreetmap|opentopomap)\.org/,rt=>rt.fulfill({body:png,contentType:'image/png'}));
+await pg.route(/routing\.openstreetmap|vagdata/,rt=>rt.abort()); await pg.route(/tile\.(openstreetmap|opentopomap)\.org/,rt=>rt.fulfill({body:png,contentType:'image/png'}));
 await pg.route('**/fonts.googleapis.com/**',rt=>rt.abort()); pg.on('pageerror',e=>console.log(tag,'ERR',e.message));
 pg.on('dialog',d=>d.accept());
 await pg.goto('http://localhost:8766/verktyg.html');await pg.waitForTimeout(600);
