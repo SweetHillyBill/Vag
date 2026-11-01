@@ -1,0 +1,51 @@
+const {chromium,devices}=require('playwright'); const fs=require('fs');
+const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==','base64');
+(async()=>{const b=await chromium.launch();
+for(const [opt,tag] of [[devices['Pixel 7'],'m'],[{viewport:{width:820,height:1180}},'t'],[{viewport:{width:1280,height:900}},'d']]){
+const ctx=await b.newContext({...opt,acceptDownloads:true});const pg=await ctx.newPage();
+await pg.route(/tile\.(openstreetmap|opentopomap)\.org/,rt=>rt.fulfill({body:png,contentType:'image/png'}));
+await pg.route('**/fonts.googleapis.com/**',rt=>rt.abort()); pg.on('pageerror',e=>console.log(tag,'ERR',e.message));
+pg.on('dialog',d=>d.accept());
+await pg.goto('http://localhost:8766/verktyg.html');await pg.waitForTimeout(600);
+console.log(tag,'steg',await pg.$eval('[data-steg].on',e=>e.textContent));
+await pg.fill('#s-forening','Exempelvägens samfällighetsförening');
+await pg.click('#stegNasta'); await pg.waitForTimeout(150);
+await pg.setInputFiles('#fastFil',{name:'fastigheter.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({format:'andelstal-fastigheter',version:1,forening:'X',fastigheter:[{namn:'Norrgården',beteckning:'Exempelby 1:1'},{namn:'Sjötorpet',beteckning:'Exempelby 1:2'},{namn:'Skogen',beteckning:'Exempelby 2:1'}]}))});
+await pg.waitForTimeout(200);
+console.log(tag,'status',await pg.$eval('#status',e=>e.textContent));
+console.log(tag,'lista',await pg.$$eval('.vkprop',x=>x.map(e=>e.innerText.replace(/\n/g,' / '))));
+// gör Skogen till skogsfastighet
+await pg.click('.vkprop:has-text("Skogen")'); await pg.waitForTimeout(100);
+const sid=await pg.evaluate(()=>selected);
+await pg.selectOption(`#typ-${sid}`,'skog'); await pg.waitForTimeout(100); await pg.fill(`#skogHa-${sid}`,'40');
+await pg.click('.vkprop:has-text("Sjötorpet")'); const fid=await pg.evaluate(()=>selected); await pg.selectOption(`#typ-${fid}`,'frit');
+if(tag==='m') await (await pg.$('#steg-fast')).screenshot({path:'/tmp/vagtest/fl-fast.png'});
+await pg.click('#stegNasta'); await pg.waitForTimeout(400);
+await pg.evaluate(()=>kartaTest.map.setView([59.053,16.55],14)); await pg.waitForTimeout(200);
+const at=async (lat,lng)=>{ await pg.$eval('#karta',e=>e.scrollIntoView({block:'center'})); const box=await (await pg.$('#karta')).boundingBox(); const p=await pg.evaluate(([a,b])=>{const q=kartaTest.map.latLngToContainerPoint([a,b]); return [q.x,q.y];},[lat,lng]); await pg.mouse.click(box.x+p[0],box.y+p[1]); await pg.waitForTimeout(150); };
+await pg.click('[data-km="vag"]');
+await at(59.05,16.565); await at(59.05,16.555); await at(59.05,16.540);
+await pg.click('#kartKlarBtn');
+await at(59.05,16.555); await at(59.056,16.555);
+await pg.click('#kartKlarBtn');
+await pg.click('[data-km="utfart"]'); await at(59.05,16.565);
+console.log(tag,'seginfo',await pg.$eval('#segInfo',e=>e.innerText));
+console.log(tag,'segs',JSON.stringify(await pg.evaluate(()=>state.segments.map(g=>[g.id,g.m,g.namn]))));
+if(tag==='m') await (await pg.$('#steg-vag')).screenshot({path:'/tmp/vagtest/fl-vag.png'});
+await pg.click('#stegNasta'); await pg.waitForTimeout(400);
+console.log(tag,'aktiv',await pg.$eval('#anslAktiv',e=>e.textContent));
+await at(59.0502,16.541); await at(59.0558,16.5551); await at(59.0501,16.56);
+console.log(tag,'anslutningar',await pg.$$eval('.anslrad',x=>x.map(e=>e.innerText.replace(/\n/g,' / '))));
+console.log(tag,'aktiv',await pg.$eval('#anslAktiv',e=>e.textContent));
+if(tag==='m') await (await pg.$('#steg-ansl')).screenshot({path:'/tmp/vagtest/fl-ansl.png'});
+await pg.click('#stegNasta'); await pg.waitForTimeout(300);
+console.log(tag,'resultat',await pg.$$eval('#summary tbody tr',x=>x.map(e=>e.innerText.replace(/\s+/g,' '))));
+await pg.click('#summary tbody tr'); await pg.waitForTimeout(100);
+console.log(tag,'detalj',(await pg.$eval('#resDetalj',e=>e.innerText)).slice(0,300));
+const [dl]=await Promise.all([pg.waitForEvent('download'),pg.click('#projSpara2')]); const fn='/tmp/vagtest/fl-projekt.json'; await dl.saveAs(fn);
+const pj=JSON.parse(fs.readFileSync(fn)); console.log(tag,'fil',dl.suggestedFilename(),pj.format,pj.resultat.map(r=>r.namn+' '+r.andel+'% '+r.km+'km').join(', '));
+const sw=await pg.evaluate(()=>document.documentElement.scrollWidth>innerWidth); console.log(tag,'sidscroll',sw);
+// reload keeps work
+await pg.reload(); await pg.waitForTimeout(500); console.log(tag,'efter omladdning',await pg.evaluate(()=>state.props.length+' fastigheter, '+state.karta.punkter.length+' punkter, steg '+openTab));
+await ctx.close();}
+await b.close();})();
