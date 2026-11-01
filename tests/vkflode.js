@@ -20,7 +20,7 @@ const sid=await pg.evaluate(()=>selected);
 await pg.selectOption(`#typ-${sid}`,'skog'); await pg.waitForTimeout(100); await pg.fill(`#skogHa-${sid}`,'40');
 await pg.click('.vkprop:has-text("Sjötorpet")'); const fid=await pg.evaluate(()=>selected); await pg.selectOption(`#typ-${fid}`,'frit');
 if(tag==='m') await (await pg.$('#steg-fast')).screenshot({path:'/tmp/vagtest/fl-fast.png'});
-await pg.click('#stegNasta'); await pg.waitForTimeout(400);
+while(await pg.evaluate(()=>openTab)==='fast') await pg.click('#stegNasta'); await pg.waitForTimeout(400);
 await pg.evaluate(()=>kartaTest.map.setView([59.053,16.55],14)); await pg.waitForTimeout(200);
 const at=async (lat,lng)=>{ await pg.$eval('#karta',e=>e.scrollIntoView({block:'center'})); const box=await (await pg.$('#karta')).boundingBox(); const p=await pg.evaluate(([a,b])=>{const q=kartaTest.map.latLngToContainerPoint([a,b]); return [q.x,q.y];},[lat,lng]); await pg.mouse.click(box.x+p[0],box.y+p[1]); await pg.waitForTimeout(150); };
 await pg.click('[data-km="vag"]');
