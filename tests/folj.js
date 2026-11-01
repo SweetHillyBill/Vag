@@ -8,7 +8,7 @@ const svar={elements:[{type:'way',id:1,nodes:huvud.map((_,i)=>100+i),geometry:hu
 for(const [opt,tag] of [[devices['Pixel 7'],'m'],[{viewport:{width:1280,height:900}},'d']]){
 const ctx=await b.newContext(opt);const pg=await ctx.newPage();
 await pg.route(/tile\.(openstreetmap|opentopomap)\.org/,rt=>rt.fulfill({body:png,contentType:'image/png'}));
-let anrop=0; await pg.route(/overpass/,rt=>{ anrop++; rt.fulfill({body:JSON.stringify(svar),contentType:'application/json'}); });
+let anrop=0; await pg.route(/functions\/v1\/vagdata/,rt=>{ anrop++; rt.fulfill({body:JSON.stringify({ways:svar.elements.map(w=>({n:w.nodes,g:w.geometry.map(p=>[p.lat,p.lon])}))}),contentType:'application/json',headers:{'access-control-allow-origin':'*'}}); });
 await pg.route('**/fonts.googleapis.com/**',rt=>rt.abort()); pg.on('pageerror',e=>console.log(tag,'ERR',e.message)); pg.on('dialog',d=>d.accept());
 await pg.goto('http://localhost:8766/verktyg.html'); await pg.waitForTimeout(500);
 await pg.evaluate(()=>{ applyRemote({}); openTab='vag'; renderTabs(); }); await pg.waitForTimeout(500);
